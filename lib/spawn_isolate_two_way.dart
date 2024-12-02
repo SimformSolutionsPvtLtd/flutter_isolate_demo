@@ -1,6 +1,7 @@
 import 'dart:isolate';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 class SpawnIsolateTwoWay extends StatefulWidget {
   const SpawnIsolateTwoWay({super.key});
@@ -16,6 +17,8 @@ class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
 
   SendPort? sendPort;
 
+  Isolate? isolate;
+
   @override
   void initState() {
     super.initState();
@@ -24,7 +27,7 @@ class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
   }
 
   Future<void> createIsolates() async {
-    Isolate.spawn<List>(heavyTask, [rcvPort.sendPort]);
+    isolate = await Isolate.spawn<List>(heavyTask, [rcvPort.sendPort]);
 
     rcvPort.listen((data) {
       if (data is SendPort) {
@@ -57,31 +60,62 @@ class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
                 sendPort?.send(1);
               },
               child: const Text('upload without isolate'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                sendPort?.send(CancelItemUploadUploadEvent(4));
+              },
+              child: const Text('Cancel Item 4'),
             )
           ],
         ),
       ),
     );
   }
+
+  @override
+  void dispose() {
+    super.dispose();
+    isolate?.kill(priority: Isolate.immediate);
+  }
 }
 
 void heavyTask(List args) {
-  final a = args[0] as SendPort;
+  final List<int> cancelItem = [];
+  final sendPort = args[0] as SendPort;
   final rcvPort = ReceivePort();
-  a.send(rcvPort.sendPort);
+  var shouldStop = false;
+  sendPort.send(rcvPort.sendPort);
   rcvPort.listen((data) async {
-    if (data as bool) {
-      // stop enum
-
-      // a.send();
+    if (data is StartUploadEvent) {
+      var percentage = 0;
+      for (var itemIndex = 0; itemIndex < 5; itemIndex++) {
+        if (shouldStop) {
+          break;
+        }
+        if (cancelItem.contains(itemIndex)) {
+          await Future.delayed(const Duration(seconds: 5));
+          percentage += 20;
+          sendPort.send('$data is $percentage uploaded');
+        }
+      }
+    } else if (data is CancelItemUploadUploadEvent) {
+      cancelItem.add(data.index);
       return;
-
-    }
-    var percentage = 0;
-    for (var itemCount = 0; itemCount < 5; itemCount++) {
-      await Future.delayed(const Duration(seconds: 1));
-      percentage += 20;
-      a.send('$data is $percentage uploaded');
+    } else if (data is StopUploadUploadEvent) {
+      shouldStop = true;
     }
   });
+}
+
+abstract class UploadEvent {}
+
+class StartUploadEvent extends UploadEvent {}
+
+class StopUploadUploadEvent extends UploadEvent {}
+
+class CancelItemUploadUploadEvent extends UploadEvent {
+  CancelItemUploadUploadEvent(this.index);
+
+  final int index;
 }
