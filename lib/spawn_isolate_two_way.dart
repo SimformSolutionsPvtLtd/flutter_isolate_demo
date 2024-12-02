@@ -1,7 +1,6 @@
 import 'dart:isolate';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 
 class SpawnIsolateTwoWay extends StatefulWidget {
   const SpawnIsolateTwoWay({super.key});
@@ -11,11 +10,11 @@ class SpawnIsolateTwoWay extends StatefulWidget {
 }
 
 class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
-  var response = "";
+  var response = "Response";
 
   final rcvPort = ReceivePort();
 
-  SendPort? sendPort;
+  SendPort? sendPortFromIsolate;
 
   Isolate? isolate;
 
@@ -27,11 +26,12 @@ class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
   }
 
   Future<void> createIsolates() async {
-    isolate = await Isolate.spawn<List>(heavyTask, [rcvPort.sendPort]);
+    isolate = await Isolate.spawn<CreateIsolateData>(
+        heavyTask, CreateIsolateData(rcvPort.sendPort));
 
     rcvPort.listen((data) {
       if (data is SendPort) {
-        sendPort = data;
+        sendPortFromIsolate = data;
       } else {
         setState(() {
           response = data as String;
@@ -43,29 +43,37 @@ class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Spawn Isolate Two way'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const CircularProgressIndicator(),
+            const SizedBox(height: 20),
             Text(response),
+            const SizedBox(height: 20),
             ElevatedButton(
+              child: const Text('Start Upload'),
               onPressed: () {
-                sendPort?.send(1);
+                sendPortFromIsolate?.send(StartUploadEvent(5));
               },
-              child: const Text('upload with isolate'),
             ),
+            const SizedBox(height: 20),
             ElevatedButton(
+              child: const Text('Cancel Item 2'),
               onPressed: () {
-                sendPort?.send(1);
+                sendPortFromIsolate?.send(CancelItemUploadEvent(2));
               },
-              child: const Text('upload without isolate'),
             ),
+            const SizedBox(height: 20),
             ElevatedButton(
+              child: const Text('stop Isolate'),
               onPressed: () {
-                sendPort?.send(CancelItemUploadUploadEvent(4));
+                sendPortFromIsolate?.send(StopUploadEvent());
               },
-              child: const Text('Cancel Item 4'),
             )
           ],
         ),
@@ -80,42 +88,58 @@ class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
   }
 }
 
-void heavyTask(List args) {
-  final List<int> cancelItem = [];
-  final sendPort = args[0] as SendPort;
+void heavyTask(CreateIsolateData createIsolateData) {
+  final sendPort = createIsolateData.sendPort;
   final rcvPort = ReceivePort();
-  var shouldStop = false;
+
+  var stopUpload = false;
+  final List<int> cancelItem = [];
+
   sendPort.send(rcvPort.sendPort);
+
   rcvPort.listen((data) async {
     if (data is StartUploadEvent) {
-      var percentage = 0;
-      for (var itemIndex = 0; itemIndex < 5; itemIndex++) {
-        if (shouldStop) {
-          break;
-        }
-        if (cancelItem.contains(itemIndex)) {
-          await Future.delayed(const Duration(seconds: 5));
-          percentage += 20;
-          sendPort.send('$data is $percentage uploaded');
+      stopUpload = false;
+      for (var itemIndex = 0; itemIndex < data.itemCount; itemIndex++) {
+        if (!cancelItem.contains(itemIndex)) {
+          var percentage = 0;
+          for (var progress = 0; progress < 5; progress++) {
+            if (stopUpload) {
+              sendPort.send('Uploading Stopped');
+              return;
+            }
+            sendPort.send('$itemIndex is $percentage% uploaded');
+            await Future.delayed(const Duration(seconds: 2));
+            percentage += 20;
+          }
         }
       }
-    } else if (data is CancelItemUploadUploadEvent) {
+    } else if (data is CancelItemUploadEvent) {
       cancelItem.add(data.index);
       return;
-    } else if (data is StopUploadUploadEvent) {
-      shouldStop = true;
+    } else if (data is StopUploadEvent) {
+      stopUpload = true;
     }
   });
 }
 
-abstract class UploadEvent {}
+/// Models
+class StartUploadEvent {
+  StartUploadEvent(this.itemCount);
 
-class StartUploadEvent extends UploadEvent {}
+  final int itemCount;
+}
 
-class StopUploadUploadEvent extends UploadEvent {}
+class StopUploadEvent {}
 
-class CancelItemUploadUploadEvent extends UploadEvent {
-  CancelItemUploadUploadEvent(this.index);
+class CancelItemUploadEvent {
+  CancelItemUploadEvent(this.index);
 
   final int index;
+}
+
+class CreateIsolateData {
+  CreateIsolateData(this.sendPort);
+
+  final SendPort sendPort;
 }

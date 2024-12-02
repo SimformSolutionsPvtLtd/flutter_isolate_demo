@@ -18,12 +18,16 @@ class SpawnIsolateOneWayState extends State<SpawnIsolateOneWay> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Spawn Isolate One way')),
+      appBar: AppBar(
+        title: const Text('Spawn Isolate One way'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const CircularProgressIndicator(),
+            const SizedBox(height: 20),
             Text(result, textAlign: TextAlign.center),
           ],
         ),
