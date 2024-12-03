@@ -1,3 +1,4 @@
+import 'dart:isolate';
 
 import 'package:flutter/material.dart';
 
@@ -33,9 +34,11 @@ class _IsolateRunState extends State<IsolateRun> {
       ),
     );
   }
+  static int staticVariable = 0;
 
   void findLastPrimeValue() async {
-    final value = findPrimes(500000);
+    // final value = findPrimes(500000);
+    final value = await Isolate.run(() => findPrimes(staticVariable));
     setState(() {
       lastPrimeValue = value;
     });

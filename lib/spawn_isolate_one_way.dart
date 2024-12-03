@@ -13,7 +13,6 @@ class SpawnIsolateOneWay extends StatefulWidget {
 class SpawnIsolateOneWayState extends State<SpawnIsolateOneWay> {
   String result = 'Tap the button to start computation';
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,7 +31,9 @@ class SpawnIsolateOneWayState extends State<SpawnIsolateOneWay> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          // create isolate here
+        },
         child: const Icon(Icons.play_arrow),
       ),
     );
@@ -45,14 +46,34 @@ class SpawnIsolateOneWayState extends State<SpawnIsolateOneWay> {
     // Perform heavy computation
     int sum = 0;
     for (int j = 1; j <= times; j++) {
-      for (int i = 1; i <= data; i++) {
-        sum += i * i;
-      }
-      await Future.delayed(const Duration(seconds: 3));
+      sum += findPrimes(data);
     }
   }
-
 }
+
+
+int findPrimes(int a) {
+  final int maxNumber = a;
+
+  final List<int> primes = [];
+
+  for (int i = 2; i <= maxNumber; i++) {
+    if (isPrime(i)) {
+      primes.add(i);
+    }
+  }
+  return primes.last;
+}
+
+// Helper function to check if a number is prime
+bool isPrime(int number) {
+  if (number < 2) return false;
+  for (int i = 2; i <= number ~/ 2; i++) {
+    if (number % i == 0) return false;
+  }
+  return true;
+}
+
 
 class IsolateData {
   IsolateData({

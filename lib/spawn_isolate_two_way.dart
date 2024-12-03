@@ -12,33 +12,6 @@ class SpawnIsolateTwoWay extends StatefulWidget {
 class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
   var response = "Response";
 
-  final rcvPort = ReceivePort();
-
-  SendPort? sendPortFromIsolate;
-
-  Isolate? isolate;
-
-  @override
-  void initState() {
-    super.initState();
-
-    createIsolates();
-  }
-
-  Future<void> createIsolates() async {
-    isolate = await Isolate.spawn<IsolateData>(
-        heavyTask, IsolateData(rcvPort.sendPort));
-
-    rcvPort.listen((data) {
-      if (data is SendPort) {
-        sendPortFromIsolate = data;
-      } else {
-        setState(() {
-          response = data as String;
-        });
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,21 +31,29 @@ class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
             ElevatedButton(
               child: const Text('Start Upload'),
               onPressed: () {
-                sendPortFromIsolate?.send(StartUploadEvent(5));
+                // start upload event
               },
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               child: const Text('Cancel Item 2'),
               onPressed: () {
-                sendPortFromIsolate?.send(CancelItemUploadEvent(2));
+                //cancel item
               },
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              child: const Text('stop Isolate'),
+              child: const Text('Stop Isolate'),
               onPressed: () {
-                sendPortFromIsolate?.send(StopUploadEvent());
+                //stop upload
+              },
+            ),
+
+            const SizedBox(height: 20),
+            ElevatedButton(
+              child: const Text('kill Isolate'),
+              onPressed: () {
+                //kill upload
               },
             )
           ],
@@ -80,47 +61,26 @@ class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
       ),
     );
   }
-
-  @override
-  void dispose() {
-    super.dispose();
-    isolate?.kill(priority: Isolate.immediate);
-  }
 }
 
-void heavyTask(IsolateData createIsolateData) {
-  final sendPort = createIsolateData.sendPort;
-  final rcvPort = ReceivePort();
-
+void heavyTask(IsolateData message) async {
   var stopUpload = false;
   final List<int> cancelItem = [];
-
-  sendPort.send(rcvPort.sendPort);
-
-  rcvPort.listen((data) async {
-    if (data is StartUploadEvent) {
-      stopUpload = false;
-      for (var itemIndex = 0; itemIndex < data.itemCount; itemIndex++) {
-        if (!cancelItem.contains(itemIndex)) {
-          var percentage = 0;
-          for (var progress = 0; progress < 5; progress++) {
-            if (stopUpload) {
-              sendPort.send('Uploading Stopped');
-              return;
-            }
-            sendPort.send('$itemIndex is $percentage% uploaded');
-            await Future.delayed(const Duration(seconds: 2));
-            percentage += 20;
-          }
+  for (var itemIndex = 0; itemIndex < 4; itemIndex++) {
+    if (!cancelItem.contains(itemIndex)) {
+      var percentage = 0;
+      for (var progress = 0; progress < 5; progress++) {
+        if (stopUpload) {
+          debugPrint('Uploading Stopped');
+          return;
         }
+        // send progress here
+        debugPrint('$itemIndex is $percentage% uploaded');
+        await Future.delayed(const Duration(seconds: 2));
+        percentage += 20;
       }
-    } else if (data is CancelItemUploadEvent) {
-      cancelItem.add(data.index);
-      return;
-    } else if (data is StopUploadEvent) {
-      stopUpload = true;
     }
-  });
+  }
 }
 
 /// Models
