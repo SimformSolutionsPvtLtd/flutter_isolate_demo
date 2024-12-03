@@ -13,7 +13,6 @@ class SpawnIsolateOneWay extends StatefulWidget {
 class SpawnIsolateOneWayState extends State<SpawnIsolateOneWay> {
   String result = 'Tap the button to start computation';
 
-  Isolate? isolate;
 
   @override
   Widget build(BuildContext context) {
@@ -33,33 +32,13 @@ class SpawnIsolateOneWayState extends State<SpawnIsolateOneWay> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => createIsolate(100000),
+        onPressed: () {},
         child: const Icon(Icons.play_arrow),
       ),
     );
   }
 
-  Future<void> createIsolate(int range) async {
-    // Create a ReceivePort to get data back from the isolate
-    final receivePort = ReceivePort();
-
-    // Spawn the isolate
-    isolate = await Isolate.spawn(
-        _heavyComputation,
-        IsolateData(
-          value: 10000,
-          sendPort: receivePort.sendPort,
-          times: 5,
-        ));
-    receivePort.listen((data) {
-      setState(() {
-        result = 'Sum of squares: ${data as int}';
-      });
-    });
-  }
-
   static void _heavyComputation(IsolateData message) async {
-    final replyPort = message.sendPort;
     final data = message.value; // Range
     final times = message.times; // Range
 
@@ -70,16 +49,9 @@ class SpawnIsolateOneWayState extends State<SpawnIsolateOneWay> {
         sum += i * i;
       }
       await Future.delayed(const Duration(seconds: 3));
-      replyPort?.send(sum + j);
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-
-    isolate?.kill(priority: Isolate.immediate);
-  }
 }
 
 class IsolateData {

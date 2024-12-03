@@ -26,8 +26,8 @@ class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
   }
 
   Future<void> createIsolates() async {
-    isolate = await Isolate.spawn<CreateIsolateData>(
-        heavyTask, CreateIsolateData(rcvPort.sendPort));
+    isolate = await Isolate.spawn<IsolateData>(
+        heavyTask, IsolateData(rcvPort.sendPort));
 
     rcvPort.listen((data) {
       if (data is SendPort) {
@@ -88,7 +88,7 @@ class _SpawnIsolateTwoWayState extends State<SpawnIsolateTwoWay> {
   }
 }
 
-void heavyTask(CreateIsolateData createIsolateData) {
+void heavyTask(IsolateData createIsolateData) {
   final sendPort = createIsolateData.sendPort;
   final rcvPort = ReceivePort();
 
@@ -138,8 +138,8 @@ class CancelItemUploadEvent {
   final int index;
 }
 
-class CreateIsolateData {
-  CreateIsolateData(this.sendPort);
+class IsolateData {
+  IsolateData(this.sendPort);
 
   final SendPort sendPort;
 }
